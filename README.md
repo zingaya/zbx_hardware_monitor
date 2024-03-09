@@ -7,7 +7,7 @@ It is needed to download official Open Hardware Monitor https://openhardwaremoni
 Setup the web interface on the Open Hardware Monitor, and don't forget allow it in Windows firewall. Optionally start at boot.\
 ![imagen](https://github.com/zingaya/zbx_hardware_monitor/assets/19838800/d5656400-cfd5-46f6-b1a3-1455af0f8414)
 
-The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand your needs.
+The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand to your needs.
 Change the item prototypes for temperatures, and adjust the "Units" for Celsius (default) or Fahrenheit.
 
 Tested in:\
