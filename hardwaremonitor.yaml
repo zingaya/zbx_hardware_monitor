@@ -22,7 +22,7 @@ zabbix_export:
         Ryzen 7600x
         Windows 10
         
-        Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_processes_monitor
+        Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_hardware_monitor
       groups:
         - name: 'Custom Templates'
       items:
