@@ -2,21 +2,21 @@
 
 ## Description
 
-This template allows you to monitor hardware sensors like temperature, power, load and more, on a Windows machine.
-It is needed to download official Open Hardware Monitor https://openhardwaremonitor.org/ or the branch I use https://github.com/hexagon-oss/openhardwaremonitor
+This template allows you to monitor hardware sensors like temperature, power, load and more, on a Windows machine.\
+It is needed to download official Open Hardware Monitor https://openhardwaremonitor.org/ or the branch I use https://github.com/hexagon-oss/openhardwaremonitor \
 Setup the web interface on the Open Hardware Monitor, and don't forget allow it in Windows firewall.
 
 The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand your needs.
 Change the item prototypes for temperatures, and adjust the "Units" for Celsius (default) or Fahrenheit.
 
-Tested in:
-Zabbix 7.0.0alpha9
-ASUS TUF GAMING X670E-PLUS WIFI
-Nvidia RTX 4070Ti
-Ryzen 7600x
+Tested in:\
+Zabbix 7.0.0alpha9\
+ASUS TUF GAMING X670E-PLUS WIFI\
+Nvidia RTX 4070Ti\
+Ryzen 7600x\
 Windows 10
 
-Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_processes_monitor
+Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_hardware_monitor
 
 ## Author
 
