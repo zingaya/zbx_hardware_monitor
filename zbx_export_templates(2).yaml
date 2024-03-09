@@ -1,0 +1,229 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 26f42bba0c4448c290fa5423bb4a2664
+      name: 'Custom Templates'
+  templates:
+    - uuid: ee783ea3688545cc8c740ee241676d7c
+      template: HardwareMonitor
+      name: HardwareMonitor
+      description: |
+        Download and run OpenHardware Monitor from https://github.com/hexagon-oss/openhardwaremonitor/releases
+        Setup the web interface on it, and don't forget the firewall in Windows.
+        
+        Tested in
+        Zabbix 7.0.0alpha9
+        ASUS TUF GAMING X670E-PLUS WIFI
+        Nvidia RTX 4070Ti
+        Ryzen 7600x
+        Windows 10
+      groups:
+        - name: 'Custom Templates'
+      items:
+        - uuid: eac43aef98614e909bedf3d303a6bd48
+          name: 'Get OpenHardwareMonitor raw data'
+          type: HTTP_AGENT
+          key: get.ohm.raw
+          history: 1h
+          trends: '0'
+          value_type: TEXT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.Children[*].Children[*]'
+          url: '{$OPENHARDWAREMONITOR.URL}'
+          tags:
+            - tag: component
+              value: ohm-raw
+      discovery_rules:
+        - uuid: 8d11fc98d3a24cbd94cdff57a4706159
+          name: 'Sensors powers'
+          type: DEPENDENT
+          key: 'get.ohm.sensors[powers]'
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#SENSORTYPE}'
+                value: Powers
+                formulaid: A
+          item_prototypes:
+            - uuid: 503bfacb585c47f6af3963d9e384f13c
+              name: '{#COMPONENTNAME} ({#SENSORDATA} - Powers)'
+              type: DEPENDENT
+              key: 'get.ohm[{#NODEID},{#COMPONENTNAME},Powers]'
+              delay: '0'
+              history: 1w
+              value_type: FLOAT
+              units: w
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.NodeId == "{#NODEID}")].Value.first()'
+                - type: STR_REPLACE
+                  parameters:
+                    - ','
+                    - .
+                - type: REGEX
+                  parameters:
+                    - '([0-9]+\.?[0-9]?)'
+                    - \1
+              master_item:
+                key: get.ohm.raw
+              tags:
+                - tag: component
+                  value: 'ohm-{#SENSORTYPE}'
+          master_item:
+            key: get.ohm.raw
+          lld_macro_paths:
+            - lld_macro: '{#COMPONENTNAME}'
+              path: $.componentName
+            - lld_macro: '{#NODEID}'
+              path: $.NodeId
+            - lld_macro: '{#SENSORDATA}'
+              path: $.sensorData
+            - lld_macro: '{#SENSORTYPE}'
+              path: $.sensorType
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var jsonData = JSON.parse(value);
+                  
+                      // Define an array to store the processed data
+                      var processedData = [];
+                  
+                      // Iterate over the JSON data
+                      for (var i = 0; i < jsonData.length; i++) {
+                          var componentData = jsonData[i];
+                          var componentName = componentData.Text;
+                  
+                          // Iterate over the children
+                          for (var j = 0; j < componentData.Children.length; j++) {
+                              var sensorData = componentData.Children[j];
+                              var sensorType = sensorData.Text;
+                  
+                              // Iterate over the children of sensor
+                              for (var k = 0; k < sensorData.Children.length; k++) {
+                                  var sensorValues = sensorData.Children[k];
+                                  var result = {
+                                      componentName: componentName,
+                                      sensorType: sensorType,
+                                      sensorData: sensorValues.Text,
+                                      NodeId: sensorValues.NodeId
+                                  };
+                  
+                                  // Push the processed data into the array
+                                  processedData.push(result);
+                              }
+                          }
+                      }
+                  
+                      // Return the processed data and the entire JSON data
+                      return JSON.stringify({ data: processedData });
+        - uuid: 569ebb9feb844a5ea49cff7e06d59883
+          name: 'Sensors temperatures'
+          type: DEPENDENT
+          key: 'get.ohm.sensors[temperature]'
+          delay: '0'
+          filter:
+            conditions:
+              - macro: '{#SENSORTYPE}'
+                value: Temperatures
+                formulaid: A
+          item_prototypes:
+            - uuid: e6d0d945a0964170acc96031bc69b707
+              name: '{#COMPONENTNAME} ({#SENSORDATA} - Temperatures)'
+              type: DEPENDENT
+              key: 'get.ohm[{#NODEID},{#COMPONENTNAME},Temperatures]'
+              delay: '0'
+              history: 2w
+              value_type: FLOAT
+              units: ºC
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.NodeId == "{#NODEID}")].Value.first()'
+                - type: STR_REPLACE
+                  parameters:
+                    - ','
+                    - .
+                - type: REGEX
+                  parameters:
+                    - '([0-9]+\.?[0-9]?)'
+                    - \1
+              master_item:
+                key: get.ohm.raw
+              tags:
+                - tag: component
+                  value: 'ohm-{#SENSORTYPE}'
+          master_item:
+            key: get.ohm.raw
+          lld_macro_paths:
+            - lld_macro: '{#COMPONENTNAME}'
+              path: $.componentName
+            - lld_macro: '{#NODEID}'
+              path: $.NodeId
+            - lld_macro: '{#SENSORDATA}'
+              path: $.sensorData
+            - lld_macro: '{#SENSORTYPE}'
+              path: $.sensorType
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var jsonData = JSON.parse(value);
+                  
+                      // Define an array to store the processed data
+                      var processedData = [];
+                  
+                      // Iterate over the JSON data
+                      for (var i = 0; i < jsonData.length; i++) {
+                          var componentData = jsonData[i];
+                          var componentName = componentData.Text;
+                  
+                          // Iterate over the children
+                          for (var j = 0; j < componentData.Children.length; j++) {
+                              var sensorData = componentData.Children[j];
+                              var sensorType = sensorData.Text;
+                  
+                              // Iterate over the children of sensor
+                              for (var k = 0; k < sensorData.Children.length; k++) {
+                                  var sensorValues = sensorData.Children[k];
+                                  var result = {
+                                      componentName: componentName,
+                                      sensorType: sensorType,
+                                      sensorData: sensorValues.Text,
+                                      NodeId: sensorValues.NodeId
+                                  };
+                  
+                                  // Push the processed data into the array
+                                  processedData.push(result);
+                              }
+                          }
+                      }
+                  
+                      // Return the processed data and the entire JSON data
+                      return JSON.stringify({ data: processedData });
+      macros:
+        - macro: '{$OPENHARDWAREMONITOR.URL}'
+          value: 'http://IP:8086/data.json'
+      dashboards:
+        - uuid: b5092bc30247433ebf6c7e08e89d736b
+          name: Sensors
+          pages:
+            - widgets:
+                - type: graphprototype
+                  width: '16'
+                  height: '5'
+                  fields:
+                    - type: STRING
+                      name: reference
+                      value: WIBUJ
+                - type: graphprototype
+                  'y': '5'
+                  width: '16'
+                  height: '5'
+                  fields:
+                    - type: STRING
+                      name: reference
+                      value: POQRA
