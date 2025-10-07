@@ -3,15 +3,12 @@
 ## Description
 
 This template allows you to monitor hardware sensors like temperature, power, load and more, on a Windows machine.\
-It is needed to download official Open Hardware Monitor https://openhardwaremonitor.org/ or the branch I use https://github.com/hexagon-oss/openhardwaremonitor \
-Setup the web interface on the Open Hardware Monitor, and don't forget allow it in Windows firewall. Optionally start at boot.\
-![imagen](https://github.com/zingaya/zbx_hardware_monitor/assets/19838800/d5656400-cfd5-46f6-b1a3-1455af0f8414)
-
-The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand to your needs.
-Change the item prototypes for temperatures, and adjust the "Units" for Celsius (default) or Fahrenheit.
+Download official Libre Hardware Monitor from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor\
+Setup the web interface on the Libre Hardware Monitor, and don't forget allow it in Windows firewall. Don't forget to start at boot.\
+![imagen](http://gitea-01.local:3000/zingaya/zbx_hardware_monitor/assets/19838800/d5656400-cfd5-46f6-b1a3-1455af0f8414)
 
 Tested in:\
-Zabbix 7.0.0alpha9\
+Zabbix 7.4.2\
 ASUS TUF GAMING X670E-PLUS WIFI\
 Nvidia RTX 4070Ti\
 Ryzen 7600x\
@@ -19,48 +16,30 @@ Windows 10
 
 Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_hardware_monitor
 
-## Author
+## How it works
+ - Master Item
 
-Leonardo Savoini
+ An HTTP agent item (lhm.get.json) periodically queries the LibreHardwareMonitor JSON endpoint ({$LIBREHARDWAREMONITOR.URL}) to fetch raw sensor data from the Windows host.
 
-## Macros used
+ - Component Discovery
 
-|Name|Description|Default|Type|
-|----|-----------|-------|----|
-|{$OPENHARDWAREMONITOR.URL}|The URL of the machine.|`http://HOST:8086/data.json`|Text macro|
+ A dependent discovery rule (lhm.discover.components) parses the JSON and filters for key hardware components (CPU, GPU, RAM, motherboard, etc.), creating low-level discovery (LLD) macros {#ID}, {#COMPONENTNAME}, and {#COMPONENTTYPE}.
 
-## Template links
+ - Nested Sensor Discovery
 
-There are no template links in this template.
+ Leveraging Zabbix’s latest nested LLD feature, a second discovery rule (lhm.discover.component.sensors[{#COMPONENTNAME}]) runs within each component context. It filters for Temperature and Power sensors, using AND conditions on {#SENSORTYPE} and {#SENSORID} to select only those sensor types.
 
-## Discovery rules
+ - Item Prototypes
 
-|Name|Description|Type|Key and additional info|
-|----|-----------|----|-----------------------|
-|Sensors temperatures|Discovery of sensors that have temperatures.|`DEPENDENT_ITEM (get.ohm.raw)`|get.ohm.sensors[temperature]|
-|Sensors powers|Discovery of sensors that have powers.|`DEPENDENT_ITEM (get.ohm.raw)`|get.ohm.sensors[powers]|
+ For each discovered sensor, two dependent items are auto-generated:
 
-## Items
+    Power item in watts (W)
 
-|Name|Description|Type|Key and additional info|
-|----|-----------|----|-----------------------|
-|Get OpenHardwareMonitor raw data|Collects raw data from Open Hardware Monitor.|`HTTP_AGENT`|get.ohm.raw|
+    Temperature item in degrees (ºC or ºF, per {$TEMPTYPE})
+    Both use JSONPath to extract the value, string replacement to normalize decimal separators, and regex to isolate the numeric value.
 
-## Triggers
+ User Macros
 
-There are no triggers in this template.
+    {$LIBREHARDWAREMONITOR.URL} specifies the JSON data URL provided by LibreHardwareMonitor.
 
-## Items prototype
-
-|Name|Description|Type|Key and additional info|
-|----|-----------|----|-----------------------|
-|{#COMPONENTNAME} ({#SENSORDATA} - Temperatures)|Get temperature|`DEPENDENT_ITEM (get.ohm.raw)`|get.ohm[{#NODEID},{#COMPONENTNAME},Temperatures]|
-|{#COMPONENTNAME} ({#SENSORDATA} - Powers)|Get power consumption|`DEPENDENT_ITEM (get.ohm.raw)`|get.ohm[{#NODEID},{#COMPONENTNAME},Powers]|
-
-## Triggers prototype
-
-There are no triggers template in this template.
- 
-## LLD Overrides
-
-There are no overrides in this template.
+    {$TEMPTYPE} defines the temperature unit (C or F).

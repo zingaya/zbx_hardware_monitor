@@ -1,18 +1,18 @@
 zabbix_export:
-  version: '7.0'
+  version: '7.4'
   template_groups:
     - uuid: 26f42bba0c4448c290fa5423bb4a2664
       name: 'Custom Templates'
   templates:
-    - uuid: ee783ea3688545cc8c740ee241676d7c
-      template: HardwareMonitor
-      name: HardwareMonitor
+    - uuid: f040f5808202478aaa3fa1894eb69d4f
+      template: LibreHardwareMonitor
+      name: LibreHardwareMonitor
       description: |
-        This template allows you to monitor hardware sensors like temperature, power, load and more, on a Windows machine.
-        It is needed to download official Open Hardware Monitor https://openhardwaremonitor.org/ or the branch I use https://github.com/hexagon-oss/openhardwaremonitor
-        Setup the web interface on the Open Hardware Monitor, and don't forget allow it in Windows firewall.
+        This template allows you to monitor hardware sensors like temperature, power, load, fans and even more, on a Windows machine.
+        It is needed to download official Libre Hardware Monitor https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
+        Setup the web interface on the Libre Hardware Monitor, and don't forget allow it in Windows firewall. Recommended setup to start at boot.
         
-        The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand your needs.
+        The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand to your needs.
         Change the item prototypes for temperatures, and adjust the "Units" for Celsius (default) or Fahrenheit.
         
         Tested in:
@@ -26,200 +26,162 @@ zabbix_export:
       groups:
         - name: 'Custom Templates'
       items:
-        - uuid: eac43aef98614e909bedf3d303a6bd48
-          name: 'Get OpenHardwareMonitor raw data'
+        - uuid: 4d0c771bb64c4b949a10b4ffdf1bf1ea
+          name: 'Get LibreHardwareMonitor raw data'
           type: HTTP_AGENT
-          key: get.ohm.raw
-          history: 1h
-          trends: '0'
+          key: lhm.get.json
+          delay: 0;m/1
+          history: '0'
           value_type: TEXT
           preprocessing:
             - type: JSONPATH
               parameters:
                 - '$.Children[*].Children[*]'
-          url: '{$OPENHARDWAREMONITOR.URL}'
+            - type: STR_REPLACE
+              parameters:
+                - '"ImageURL":"images_icon/'
+                - '"Type":"'
+            - type: STR_REPLACE
+              parameters:
+                - '.png"'
+                - '"'
+          url: '{$LIBREHARDWAREMONITOR.URL}'
           tags:
             - tag: component
-              value: ohm-raw
+              value: lhm-raw
       discovery_rules:
-        - uuid: 8d11fc98d3a24cbd94cdff57a4706159
-          name: 'Sensors powers'
-          type: DEPENDENT
-          key: 'get.ohm.sensors[powers]'
-          delay: '0'
+        - uuid: 9877f06ae582437091db79e96d49a9e5
+          name: 'Discover component sensors - {#COMPONENTNAME}'
+          type: NESTED
+          key: 'lhm.discover.component.sensors[{#COMPONENTNAME}]'
           filter:
+            evaltype: AND
             conditions:
+              - macro: '{#SENSORID}'
+                operator: EXISTS
               - macro: '{#SENSORTYPE}'
-                value: Powers
-                formulaid: A
+                value: ^(Temperature|Power)$
           item_prototypes:
-            - uuid: 503bfacb585c47f6af3963d9e384f13c
-              name: '{#COMPONENTNAME} ({#SENSORDATA} - Powers)'
+            - uuid: 4bb26ad12a574644a82e788266d130b4
+              name: '{{#COMPONENTTYPE}.uppercase()} power - {#SENSORNAME}'
               type: DEPENDENT
-              key: 'get.ohm[{#NODEID},{#COMPONENTNAME},Powers]'
-              delay: '0'
-              history: 1w
-              value_type: FLOAT
-              units: w
-              preprocessing:
-                - type: JSONPATH
-                  parameters:
-                    - '$..[?(@.NodeId == "{#NODEID}")].Value.first()'
-                - type: STR_REPLACE
-                  parameters:
-                    - ','
-                    - .
-                - type: REGEX
-                  parameters:
-                    - '([0-9]+\.?[0-9]?)'
-                    - \1
-              master_item:
-                key: get.ohm.raw
-              tags:
-                - tag: component
-                  value: 'ohm-{#SENSORTYPE}'
-          master_item:
-            key: get.ohm.raw
-          lld_macro_paths:
-            - lld_macro: '{#COMPONENTNAME}'
-              path: $.componentName
-            - lld_macro: '{#NODEID}'
-              path: $.NodeId
-            - lld_macro: '{#SENSORDATA}'
-              path: $.sensorData
-            - lld_macro: '{#SENSORTYPE}'
-              path: $.sensorType
-          preprocessing:
-            - type: JAVASCRIPT
-              parameters:
-                - |
-                  var jsonData = JSON.parse(value);
-                  
-                      // Define an array to store the processed data
-                      var processedData = [];
-                  
-                      // Iterate over the JSON data
-                      for (var i = 0; i < jsonData.length; i++) {
-                          var componentData = jsonData[i];
-                          var componentName = componentData.Text;
-                  
-                          // Iterate over the children
-                          for (var j = 0; j < componentData.Children.length; j++) {
-                              var sensorData = componentData.Children[j];
-                              var sensorType = sensorData.Text;
-                  
-                              // Iterate over the children of sensor
-                              for (var k = 0; k < sensorData.Children.length; k++) {
-                                  var sensorValues = sensorData.Children[k];
-                                  var result = {
-                                      componentName: componentName,
-                                      sensorType: sensorType,
-                                      sensorData: sensorValues.Text,
-                                      NodeId: sensorValues.NodeId
-                                  };
-                  
-                                  // Push the processed data into the array
-                                  processedData.push(result);
-                              }
-                          }
-                      }
-                  
-                      // Return the processed data and the entire JSON data
-                      return JSON.stringify({ data: processedData });
-        - uuid: 569ebb9feb844a5ea49cff7e06d59883
-          name: 'Sensors temperatures'
-          type: DEPENDENT
-          key: 'get.ohm.sensors[temperature]'
-          delay: '0'
-          filter:
-            conditions:
-              - macro: '{#SENSORTYPE}'
-                value: Temperatures
-                formulaid: A
-          item_prototypes:
-            - uuid: e6d0d945a0964170acc96031bc69b707
-              name: '{#COMPONENTNAME} ({#SENSORDATA} - Temperatures)'
-              type: DEPENDENT
-              key: 'get.ohm[{#NODEID},{#COMPONENTNAME},Temperatures]'
-              delay: '0'
+              key: 'lhm.sensor.power[{#SENSORID} {#ID}]'
               history: 2w
               value_type: FLOAT
-              units: ºC
+              trends: '0'
+              discover: NO_DISCOVER
+              units: W
               preprocessing:
                 - type: JSONPATH
                   parameters:
-                    - '$..[?(@.NodeId == "{#NODEID}")].Value.first()'
+                    - '$..Children[?(@.SensorId == "{#SENSORID}")].Value.first()'
                 - type: STR_REPLACE
                   parameters:
                     - ','
                     - .
                 - type: REGEX
                   parameters:
-                    - '([0-9]+\.?[0-9]?)'
+                    - '([0-9.]+)'
                     - \1
               master_item:
-                key: get.ohm.raw
+                key: lhm.get.json
               tags:
                 - tag: component
-                  value: 'ohm-{#SENSORTYPE}'
+                  value: 'lhm-{{#SENSORTYPE}.lowercase()}'
+            - uuid: c2916918689245d6b5d6c0ff5a084fc5
+              name: '{{#COMPONENTTYPE}.uppercase()} temperature - {#SENSORNAME} (º{$TEMPTYPE})'
+              type: DEPENDENT
+              key: 'lhm.sensor.temperature[{#SENSORID} {#ID}]'
+              history: 2w
+              value_type: FLOAT
+              trends: '0'
+              discover: NO_DISCOVER
+              units: º
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..Children[?(@.SensorId == "{#SENSORID}")].Value.first()'
+                - type: STR_REPLACE
+                  parameters:
+                    - ','
+                    - .
+                - type: REGEX
+                  parameters:
+                    - '([0-9.]+)'
+                    - \1
+              master_item:
+                key: lhm.get.json
+              tags:
+                - tag: component
+                  value: 'lhm-{{#SENSORTYPE}.lowercase()}'
+          parent_discovery_rule:
+            key: lhm.discover.components
+          lld_macro_paths:
+            - lld_macro: '{#ID2}'
+              path: $.id
+            - lld_macro: '{#SENSORID}'
+              path: $.SensorId
+            - lld_macro: '{#SENSORNAME}'
+              path: $.Text
+            - lld_macro: '{#SENSORTYPE}'
+              path: $.Type
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$..Children[*].Children[*]'
+          overrides:
+            - name: Power
+              step: '1'
+              stop: STOP
+              filter:
+                conditions:
+                  - macro: '{#SENSORTYPE}'
+                    value: Power
+              operations:
+                - operator: REGEXP
+                  value: 'power -'
+                  discover: DISCOVER
+            - name: Temperature
+              step: '2'
+              stop: STOP
+              filter:
+                conditions:
+                  - macro: '{#SENSORTYPE}'
+                    value: Temperature
+              operations:
+                - operator: REGEXP
+                  value: 'temperature -'
+                  discover: DISCOVER
+        - uuid: 753ddd98358d4ecfa7081a5fc7414212
+          name: 'Discover components'
+          type: DEPENDENT
+          key: lhm.discover.components
+          filter:
+            conditions:
+              - macro: '{#COMPONENTTYPE}'
+                value: cpu|ati|nvidia|gpu|ram|mainboard
           master_item:
-            key: get.ohm.raw
+            key: lhm.get.json
           lld_macro_paths:
             - lld_macro: '{#COMPONENTNAME}'
-              path: $.componentName
-            - lld_macro: '{#NODEID}'
-              path: $.NodeId
-            - lld_macro: '{#SENSORDATA}'
-              path: $.sensorData
-            - lld_macro: '{#SENSORTYPE}'
-              path: $.sensorType
-          preprocessing:
-            - type: JAVASCRIPT
-              parameters:
-                - |
-                  var jsonData = JSON.parse(value);
-                  
-                      // Define an array to store the processed data
-                      var processedData = [];
-                  
-                      // Iterate over the JSON data
-                      for (var i = 0; i < jsonData.length; i++) {
-                          var componentData = jsonData[i];
-                          var componentName = componentData.Text;
-                  
-                          // Iterate over the children
-                          for (var j = 0; j < componentData.Children.length; j++) {
-                              var sensorData = componentData.Children[j];
-                              var sensorType = sensorData.Text;
-                  
-                              // Iterate over the children of sensor
-                              for (var k = 0; k < sensorData.Children.length; k++) {
-                                  var sensorValues = sensorData.Children[k];
-                                  var result = {
-                                      componentName: componentName,
-                                      sensorType: sensorType,
-                                      sensorData: sensorValues.Text,
-                                      NodeId: sensorValues.NodeId
-                                  };
-                  
-                                  // Push the processed data into the array
-                                  processedData.push(result);
-                              }
-                          }
-                      }
-                  
-                      // Return the processed data and the entire JSON data
-                      return JSON.stringify({ data: processedData });
+              path: $.Text
+            - lld_macro: '{#COMPONENTTYPE}'
+              path: $.Type
+            - lld_macro: '{#ID}'
+              path: $.id
       macros:
-        - macro: '{$OPENHARDWAREMONITOR.URL}'
-          value: 'http://IP:8086/data.json'
+        - macro: '{$LIBREHARDWAREMONITOR.URL}'
+          value: 'http://IP:8085/data.json'
+        - macro: '{$TEMPTYPE}'
+          value: C
+          description: 'C - Celsius | F - Farenheit'
       dashboards:
-        - uuid: b5092bc30247433ebf6c7e08e89d736b
+        - uuid: 6f807a24b0e74eb3a6a4390c1a642148
           name: Sensors
           pages:
             - widgets:
                 - type: graphprototype
-                  width: '16'
+                  width: '48'
                   height: '5'
                   fields:
                     - type: STRING
@@ -227,7 +189,7 @@ zabbix_export:
                       value: WIBUJ
                 - type: graphprototype
                   'y': '5'
-                  width: '16'
+                  width: '48'
                   height: '5'
                   fields:
                     - type: STRING
