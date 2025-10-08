@@ -1,22 +1,16 @@
-# Zabbix Template: Hardware Monitor
+# Zabbix Templates: Hardware Monitor
 
 ## Description
 
-This template allows you to monitor hardware sensors like temperature, power, load and more, on a Windows machine.\
+Two Zabbix templates are included. One for Linux, the other for Windows. And allows you to monitor hardware sensors like temperature, power (and more for Windows).
+
+### Windows
+
 Download official Libre Hardware Monitor from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor\
-Setup the web interface on the Libre Hardware Monitor, and don't forget allow it in Windows firewall. Don't forget to start at boot.\
-![imagen](http://gitea-01.local:3000/zingaya/zbx_hardware_monitor/assets/19838800/d5656400-cfd5-46f6-b1a3-1455af0f8414)
+Unzip the file, start it, and setup the web interface on the Libre Hardware Monitor, and don't forget allow it in Windows firewall. Don't forget to start at boot.\
 
-Tested in:\
-Zabbix 7.4.2\
-ASUS TUF GAMING X670E-PLUS WIFI\
-Nvidia RTX 4070Ti\
-Ryzen 7600x\
-Windows 10
-
-Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_hardware_monitor
-
-## How it works
+#### How it works
+ 
  - Master Item
 
  An HTTP agent item (lhm.get.json) periodically queries the LibreHardwareMonitor JSON endpoint ({$LIBREHARDWAREMONITOR.URL}) to fetch raw sensor data from the Windows host.
@@ -43,3 +37,44 @@ Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_har
     {$LIBREHARDWAREMONITOR.URL} specifies the JSON data URL provided by LibreHardwareMonitor.
 
     {$TEMPTYPE} defines the temperature unit (C or F).
+
+### Linux
+
+Use the included script monitor.sh. And update script variables as needed.\
+Add this script to run in a cronjob. You will need correct permissions to be able to read all sensors.
+
+#### How it works
+
+ - Master Item
+
+ A trapper item (linuxsensor.trapper) receives JSON-formatted sensor data periodically sent from the external script (monitor.sh) running on the Linux host.
+
+ - Power Sensor Discovery
+
+ A dependent discovery rule (linuxsensor.power) parses the JSON and filters for RAPL-type sensors (energy consumption via Intel RAPL), creating low-level discovery (LLD) macros {#SENSOR} and {#TYPE}.
+
+ - Temperature Sensor Discovery
+
+ A dependent discovery rule (linuxsensor.temperature) parses the same JSON and filters for hwmon or thermal-type sensors (hardware monitoring and thermal zones), using the same LLD macros {#SENSOR} and {#TYPE}.
+
+ - Item Prototypes
+
+ For each discovered power sensor, a dependent item is auto-generated:
+
+    {#SENSOR} watts
+    
+    It extracts the energy value using JSONPath, applies a multiplier of 1.0×10−61.0×10−6 to convert microjoules, and computes the change per second to derive power in watts (W).
+
+ For each discovered temperature sensor, a dependent item is auto-generated:
+    
+    {#SENSOR} temperature (º{$TEMPSCALE})
+    
+    It extracts the temperature value using JSONPath and applies a multiplier of 0.001 to convert millidegrees to degrees.
+
+    User Macros
+
+    {$TEMPSCALE} defines the temperature unit (C or F).
+
+## Requirements
+
+Zabbix 7.4.0+

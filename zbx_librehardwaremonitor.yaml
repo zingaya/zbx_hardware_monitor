@@ -8,19 +8,9 @@ zabbix_export:
       template: LibreHardwareMonitor
       name: LibreHardwareMonitor
       description: |
-        This template allows you to monitor hardware sensors like temperature, power, load, fans and even more, on a Windows machine.
-        It is needed to download official Libre Hardware Monitor https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
-        Setup the web interface on the Libre Hardware Monitor, and don't forget allow it in Windows firewall. Recommended setup to start at boot.
+        Use this template along Libre Hardware Monitor. Download from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor
         
-        The current items in Zabbix will get a Json, and use LLD for the power and temperature sensors. You can create your own LLD to expand to your needs.
-        Change the item prototypes for temperatures, and adjust the "Units" for Celsius (default) or Fahrenheit.
-        
-        Tested in:
-        Zabbix 7.0.0alpha9
-        ASUS TUF GAMING X670E-PLUS WIFI
-        Nvidia RTX 4070Ti
-        Ryzen 7600x
-        Windows 10
+        Modify macros {$LIBREHARDWAREMONITOR.URL} and {$TEMPSCALE} (just to match your temperature scale)
         
         Please report issues or contribute on GitHub: https://github.com/zingaya/zbx_hardware_monitor
       groups:
@@ -48,7 +38,7 @@ zabbix_export:
           url: '{$LIBREHARDWAREMONITOR.URL}'
           tags:
             - tag: component
-              value: lhm-raw
+              value: raw
       discovery_rules:
         - uuid: 9877f06ae582437091db79e96d49a9e5
           name: 'Discover component sensors - {#COMPONENTNAME}'
@@ -89,7 +79,7 @@ zabbix_export:
                 - tag: component
                   value: 'lhm-{{#SENSORTYPE}.lowercase()}'
             - uuid: c2916918689245d6b5d6c0ff5a084fc5
-              name: '{{#COMPONENTTYPE}.uppercase()} temperature - {#SENSORNAME} (º{$TEMPTYPE})'
+              name: '{{#COMPONENTTYPE}.uppercase()} temperature - {#SENSORNAME} (º{$TEMPSCALE})'
               type: DEPENDENT
               key: 'lhm.sensor.temperature[{#SENSORID} {#ID}]'
               history: 2w
@@ -172,26 +162,6 @@ zabbix_export:
       macros:
         - macro: '{$LIBREHARDWAREMONITOR.URL}'
           value: 'http://IP:8085/data.json'
-        - macro: '{$TEMPTYPE}'
+        - macro: '{$TEMPSCALE}'
           value: C
           description: 'C - Celsius | F - Farenheit'
-      dashboards:
-        - uuid: 6f807a24b0e74eb3a6a4390c1a642148
-          name: Sensors
-          pages:
-            - widgets:
-                - type: graphprototype
-                  width: '48'
-                  height: '5'
-                  fields:
-                    - type: STRING
-                      name: reference
-                      value: WIBUJ
-                - type: graphprototype
-                  'y': '5'
-                  width: '48'
-                  height: '5'
-                  fields:
-                    - type: STRING
-                      name: reference
-                      value: POQRA

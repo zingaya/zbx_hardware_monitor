@@ -1,0 +1,96 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 26f42bba0c4448c290fa5423bb4a2664
+      name: 'Custom Templates'
+  templates:
+    - uuid: 6abfdaafc73a49dd922add158704a862
+      template: LinuxHardwareMonitor
+      name: LinuxHardwareMonitor
+      groups:
+        - name: 'Custom Templates'
+      items:
+        - uuid: 31d97494b8bb479e8244de3511d93362
+          name: 'Trapper sensor data'
+          type: TRAP
+          key: linuxsensor.trapper
+          history: '0'
+          value_type: TEXT
+          tags:
+            - tag: component
+              value: raw
+      discovery_rules:
+        - uuid: 63553d926e094c439698ffb2d96d8190
+          name: 'uJoules sensors'
+          type: DEPENDENT
+          key: linuxsensor.power
+          filter:
+            conditions:
+              - macro: '{#TYPE}'
+                value: rapl
+          item_prototypes:
+            - uuid: bca37278080642ea9d3d43c628fbc013
+              name: '{#SENSOR} watts'
+              type: DEPENDENT
+              key: 'linuxsensor.power[{#SENSOR}]'
+              history: 2w
+              value_type: FLOAT
+              units: W
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.sensor == "{#SENSOR}")].value.first()'
+                - type: MULTIPLIER
+                  parameters:
+                    - '1.0E-6'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: linuxsensor.trapper
+              tags:
+                - tag: component
+                  value: sensor-power
+          master_item:
+            key: linuxsensor.trapper
+          lld_macro_paths:
+            - lld_macro: '{#SENSOR}'
+              path: $.sensor
+            - lld_macro: '{#TYPE}'
+              path: $.type
+        - uuid: e14efab17431463486fe381bd40c7010
+          name: 'Temperature sensors'
+          type: DEPENDENT
+          key: linuxsensor.temperature
+          filter:
+            conditions:
+              - macro: '{#TYPE}'
+                value: hwmon|thermal
+          item_prototypes:
+            - uuid: fae7fa9a732948f49f92df4c49280f86
+              name: '{#SENSOR} temperature (º{$TEMPSCALE})'
+              type: DEPENDENT
+              key: 'linuxsensor.temperature[{#SENSOR}]'
+              history: 2w
+              units: º
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.sensor == "{#SENSOR}")].value.first()'
+                - type: MULTIPLIER
+                  parameters:
+                    - '0.001'
+              master_item:
+                key: linuxsensor.trapper
+              tags:
+                - tag: component
+                  value: linuxsensor-temperature
+          master_item:
+            key: linuxsensor.trapper
+          lld_macro_paths:
+            - lld_macro: '{#SENSOR}'
+              path: $.sensor
+            - lld_macro: '{#TYPE}'
+              path: $.type
+      macros:
+        - macro: '{$TEMPSCALE}'
+          value: C
+          description: 'C - Celsius | F - Farenheit'
