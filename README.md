@@ -9,6 +9,10 @@ Two Zabbix templates are included. One for Linux, the other for Windows. And all
 Download official Libre Hardware Monitor from https://github.com/LibreHardwareMonitor/LibreHardwareMonitor\
 Unzip the file, start it, and setup the web interface on the Libre Hardware Monitor, and don't forget allow it in Windows firewall. Don't forget to start at boot.\
 
+To easily open port with (run cmd as administrator)
+
+    netsh advfirewall firewall add rule name="LibreHardwareMonitor 8085 TCP" dir=in action=allow protocol=TCP localport=8085
+
 #### How it works
  
  - Master Item
