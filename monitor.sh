@@ -8,8 +8,9 @@ AUTH_TOKEN="mytoken"  # Replace with your authentication token
 # Initialize the JSON output as an array
 json_output="["
 
-# Gather energy values for each core (rapl) using a loop instead of array
-find /sys/class/powercap/intel-rapl/ -name 'energy_uj' | while IFS= read -r energy_file; do
+# Gather energy values for each core (rapl)
+for energy_file in /sys/class/powercap/intel-rapl*/energy_uj /sys/class/powercap/intel-rapl*/intel-rapl*/*/energy_uj; do
+    [ -f "$energy_file" ] || continue  # Skip non-files (e.g., if glob doesn't match)
     core_name=$(basename "$(dirname "$energy_file")")
     energy_value=$(cat "$energy_file")
     json_output="${json_output}{\"type\":\"rapl\",\"sensor\":\"$core_name\",\"value\":\"$energy_value\"},"
