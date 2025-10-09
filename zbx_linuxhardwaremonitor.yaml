@@ -48,7 +48,7 @@ zabbix_export:
                 key: linuxsensor.trapper
               tags:
                 - tag: component
-                  value: sensor-power
+                  value: linuxsensor-power
           master_item:
             key: linuxsensor.trapper
           lld_macro_paths:
